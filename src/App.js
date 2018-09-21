@@ -1,22 +1,11 @@
 import React, {Component} from 'react'
 import * as IronWeb from '@ironcorelabs/ironweb'
 import jwt from 'jsonwebtoken'
-import ReactTooltip from 'react-tooltip'
 import './styles.css'
 import {
-    Button,
-    Drawer,
-    DrawerContent,
-    DrawerHeader,
     Grid,
     GridCell,
-    Icon,
-    List,
-    ListItem,
-    ListItemText,
-    Select,
     Snackbar,
-    TextField,
     Toolbar,
     ToolbarFixedAdjust,
     ToolbarIcon,
@@ -25,18 +14,22 @@ import {
     ToolbarTitle
 } from 'rmwc'
 import config from './ironcore-config'
-import Login from './Login.js'
+import Login from './components/Login'
+import NavMenu from './components/NavMenu'
+import MemberManagement from './components/MemberManagement';
+import Messages from './components/Messages';
+import SendMessage from './components/SendMessage';
+import GroupSelection from './components/GroupSelection';
 
 class App extends Component {
 
     state = {
         logged: '',
         groupSelected: '',
-        component: 'group',
+        selectedMenuItem: 'group',
         newGroupName: '',
         addMemberName: '',
         removeMemberName: '',
-        encryptInput: '',
         memberToRemove: '',
         groupList: [],
         groupMembers: [],
@@ -63,6 +56,7 @@ class App extends Component {
                 resolve(password)
             })
         }).then(() => {
+            window.addEventListener('beforeunload', this.logout);
             this.setState({
                 logged: 'username'
             }, this.loadData)
@@ -70,20 +64,23 @@ class App extends Component {
     };
 
     logout = () => {
-        this.setState({
-            logged: '',
-            groupSelected: '',
-            component: 'group',
-            newGroupName: '',
-            addMemberName: '',
-            removeMemberName: '',
-            encryptInput: '',
-            memberToRemove: '',
-            groupMembers: [],
-            groupList: [],
-            documentList: [],
-            documentListGroup: [],
-            snackbar: ''
+        IronWeb.user.deauthorizeDevice().then(() => {
+            console.log('listener removed');
+            window.removeEventListener('beforeunload', this.logout);
+            this.setState({
+                logged: '',
+                groupSelected: '',
+                component: 'group',
+                newGroupName: '',
+                addMemberName: '',
+                removeMemberName: '',
+                memberToRemove: '',
+                groupMembers: [],
+                groupList: [],
+                documentList: [],
+                documentListGroup: [],
+                snackbar: ''
+            })
         })
     };
 
@@ -99,43 +96,18 @@ class App extends Component {
             })
     };
 
-    changeNewGroupName = (event) => {
-        this.setState({
-            newGroupName: event.target.value
-        })
-    };
-
-    changeMemberToRemove = (event) => {
-        this.setState({
-            memberToRemove: event.target.value
-        })
-    };
-
-    createNewGroup = () => {
-        IronWeb.group.create({
-            groupName: this.state.newGroupName
+    createNewGroup = (newGroupName) => {
+        return IronWeb.group.create({
+            groupName: newGroupName
         }).then(() => {
             this.setState({
-                snackbar: this.state.newGroupName + ' created successfully',
-                newGroupName: ''
+                snackbar: newGroupName + ' created successfully',
             }, this.loadData)
         })
     };
 
-    changeAddMemberName = (event) => {
-        this.setState({
-            addMemberName: event.target.value
-        })
-    };
-
-    changeEncryptInput = (event) => {
-        this.setState({
-            encryptInput: event.target.value
-        })
-    };
-
-    encrypt = () => {
-        IronWeb.document.encryptToStore(IronWeb.codec.utf8.toBytes(this.state.encryptInput), {
+    encrypt = (encryptInput) => {
+        return IronWeb.document.encryptToStore(IronWeb.codec.utf8.toBytes(encryptInput), {
             accessList: {
                 groups: [{
                     'id': this.state.groupSelected
@@ -143,57 +115,36 @@ class App extends Component {
             }
         }).then((res) => {
                 this.setState({
-                    encryptInput: '',
                     snackbar: 'Successfully encrypted into store with ID: ' + res.documentID
                 }, this.loadData)
             }
         )
     };
 
-    addMember = () => {
-        IronWeb.group.addMembers(this.state.groupSelected, [this.state.addMemberName]).then(() => {
+    addMember = (addMemberName) => {
+        return IronWeb.group.addMembers(this.state.groupSelected, [addMemberName]).then(() => {
             this.setState({
                 snackbar: this.state.addMemberName + ' successfully added',
-                addMemberName: ''
             }, this.loadData)
         })
     };
 
-    removeMember = () => {
-        if (this.state.logged === this.state.memberToRemove)
-            IronWeb.group.removeSelfAsMember(this.state.groupSelected).then(() => {
+    removeMember = (memberToRemove, yourself = false) => {
+        if (this.state.logged === memberToRemove || yourself)
+            return IronWeb.group.removeSelfAsMember(this.state.groupSelected).then(() => {
                 this.setState({
                     groupSelected: '',
                     snackbar: 'You were successfully removed'
                 }, this.loadData)
             });
         else {
-            IronWeb.group.removeMembers(this.state.groupSelected, [this.state.memberToRemove])
+            return IronWeb.group.removeMembers(this.state.groupSelected, [memberToRemove])
                 .then(() => {
                     this.setState({
-                        snackbar: this.state.memberToRemove + ' successfully removed',
-                        memberToRemove: ''
+                        snackbar: memberToRemove + ' successfully removed'
                     }, this.loadData)
                 })
         }
-    };
-
-    removeYourself = () => {
-        IronWeb.group.removeSelfAsMember(this.state.groupSelected).then(() => {
-            this.setState({
-                groupSelected: '',
-                snackbar: 'You were successfully removed'
-            }, this.loadData)
-        })
-    };
-
-    adminCheck = () => {
-        let isadmin = false;
-        this.state.groupList.forEach((group) => {
-            if (this.state.groupSelected === group.groupID)
-                isadmin = group.isAdmin
-        });
-        return isadmin
     };
 
     decrypt = (documentID, decryptAll) => {
@@ -210,7 +161,7 @@ class App extends Component {
                 documentListUpdated = [...documentListUpdated, document]
             }
         });
-        Promise.all(promises).then(() => {
+        return Promise.all(promises).then(() => {
             this.setState({
                 documentListGroup: documentListUpdated,
                 snackbar: 'Successfully decrypted'
@@ -229,10 +180,10 @@ class App extends Component {
         }).then(this.loadData)
     };
 
-    docSort = (docA, docB) => {
-        if (docA.order < docB.order) return -1;
-        if (docA.order > docB.order) return 1;
-        return 0
+    changeMenuItem = (item) => {
+        this.setState({
+            selectedMenuItem: item
+        })
     };
 
     documentGroupFilter = () => {
@@ -273,238 +224,29 @@ class App extends Component {
         })
     };
 
-    drawer = (
-        <Drawer permanent style={{height: '100%', position: 'fixed'}}>
-            <DrawerHeader>
-                <ListItem onClick={() => {
-                    this.loadData()
-                }}>
-                    <Icon use='refresh'/>
-                </ListItem>
-            </DrawerHeader>
-            <DrawerContent>
-                <ListItem onClick={() => {
-                    this.setState({
-                        component: 'group'
-                    })
-                }}>
-                    <ListItemText>
-                        Group selection
-                    </ListItemText>
-                </ListItem>
-                <ListItem onClick={() => {
-                    this.setState({
-                        component: 'members'
-                    })
-                }}>
-                    <ListItemText>
-                        Group management
-                    </ListItemText>
-                </ListItem>
-                <ListItem onClick={() => {
-                    this.setState({
-                        component: 'message'
-                    })
-                }}>
-                    <ListItemText>
-                        Messages
-                    </ListItemText>
-                </ListItem>
-                <ListItem onClick={() => {
-                    this.setState({
-                        component: 'sendmsg'
-                    })
-                }}>
-                    <ListItemText>
-                        Send Message
-                    </ListItemText>
-                </ListItem>
-            </DrawerContent>
-        </Drawer>
-    );
+    renderSelectedMenuItem = () => {
+        if (this.state.groupSelected === '' && this.state.selectedMenuItem !== 'group')
+            return 'Please select group first';
+        switch (this.state.selectedMenuItem) {
+            case 'group':
+                return (<GroupSelection groupSelected={this.state.groupSelected} groupList={this.state.groupList}
+                                        changeSelectedGroup={this.changeSelectedGroup}
+                                        createNewGroup={this.createNewGroup}/>);
+            case 'members':
+                return (<MemberManagement groupSelected={this.state.groupSelected} groupList={this.state.groupList}
+                                          groupMembers={this.state.groupMembers} addMember={this.addMember}
+                                          removeMember={this.removeMember}/>);
+            case 'message':
+                return (<Messages documentListGroup={this.state.documentListGroup} decrypt={this.decrypt}
+                                  delete={this.delete}/>);
+            case 'sendmsg':
+                return (<SendMessage encrypt={this.encrypt}/>);
+            default:
+                return (<div/>);
+        }
+    };
 
     render() {
-
-        let groupSelection = (
-            <div>
-                <Select
-                    placeholder='Select group'
-                    value={this.state.groupSelected}
-                    onChange={this.changeSelectedGroup}
-                    disabled={this.state.groupList.length === 0}
-                >
-                    {this.state.groupList ? this.state.groupList.map((group) => {
-                        return (<option key={group.groupID} value={group.groupID}>{group.groupName}</option>)
-                    }) : ''}
-                </Select>
-                {this.state.groupSelected ? this.adminCheck() ? ' You are admin' : ' You are member' : ''}
-                <br/>
-                <TextField
-                    label='Create Group'
-                    value={this.state.newGroupName}
-                    onChange={this.changeNewGroupName}
-                />
-                <br/>
-                <Button
-                    raised
-                    onClick={this.createNewGroup}
-                    disabled={!this.state.newGroupName}
-                >
-                    <div className='button'>Create group</div>
-                </Button>
-            </div>
-        );
-
-        let memberManagement = (
-            <div>
-                Add Member?
-                <br/>
-                {this.adminCheck() && this.state.groupSelected ? (
-                        <div>
-                            <TextField
-                                label='Add member'
-                                value={this.state.addMemberName}
-                                onChange={this.changeAddMemberName}
-                            />
-                            <br/>
-                            <Button
-                                raised
-                                onClick={this.addMember}
-                            >
-                                <div className='button'>Add Member</div>
-                            </Button>
-                        </div>
-                    ) :
-                    '\nYou cannot add members\n'}
-                <br/>
-                Remove Member?
-                <br/>
-                {this.state.groupSelected ? this.adminCheck() ? (
-                        <div>
-                            <Select
-                                placeholder='Select member'
-                                value={this.state.memberToRemove}
-                                onChange={this.changeMemberToRemove}
-                            >
-                                {
-                                    this.state.groupMembers.map((member) => {
-                                        return (
-                                            <option key={member} value={member}>{member}</option>
-                                        )
-                                    })
-                                }
-                            </Select>
-                            <br/>
-                            <br/>
-                            <Button
-                                raised
-                                onClick={this.removeMember}
-                            >
-                                <div className='button'>Remove Member</div>
-                            </Button>
-                        </div>
-                    ) :
-                    (
-                        <Button
-                            raised
-                            onClick={this.removeYourself}
-                        >
-                            <div className='button'>Remove yourself</div>
-                        </Button>
-                    ) :
-                    '\nYou cannot remove members\n'}
-            </div>
-        );
-
-        let message = (
-            <div>
-                {this.state.documentListGroup.length ?
-                    <Button
-                        raised
-                        onClick={() => {
-                            this.decrypt({}, true)
-                        }}
-                    >
-                        <div className='button'>Decrypt All</div>
-                    </Button>
-                    : 'There are no messages yet'}
-                <List>
-                    {
-                        this.state.documentListGroup.sort(this.docSort).map((document) => {
-                            return (<ListItem key={document.documentID}>
-                                <ListItemText key={document.documentID}>
-                                    {document.documentID}
-                                    {' '}
-                                    <a data-tip={document.decrypted}>
-                                        {document.decrypted.substring(0, 20)}
-                                    </a>
-                                    {' '}
-                                    <Button
-                                        raised
-                                        onClick={() => {
-                                            this.decrypt(document.documentID, false)
-                                        }}
-                                    >
-                                        <div className='button'>Decrypt</div>
-                                    </Button>
-                                    {' '}
-                                    <Button
-                                        raised
-                                        onClick={() => {
-                                            this.delete(document.documentID)
-                                        }}
-                                    >
-                                        <div className='button'>Delete</div>
-                                    </Button>
-                                </ListItemText>
-                            </ListItem>)
-                        })
-                    }
-                </List>
-                <ReactTooltip effect='solid' multiline={true}/>
-            </div>
-        );
-
-        let sendMessage = (
-            <div>
-                <TextField
-                    textarea
-                    fullwidth
-                    rows='6'
-                    label='Encrypt a document'
-                    value={this.state.encryptInput}
-                    onChange={this.changeEncryptInput}
-                />
-                <br/>
-                <Button
-                    raised
-                    onClick={this.encrypt}
-                >
-                    <div className='button'>Encrypt</div>
-                </Button>
-            </div>
-        );
-
-        let component;
-        switch (this.state.component) {
-            case 'group':
-                component = groupSelection;
-                break;
-            case 'members':
-                component = memberManagement;
-                break;
-            case 'message':
-                component = message;
-                break;
-            case 'sendmsg':
-                component = sendMessage;
-                break;
-            default:
-                component = (<div/>);
-                break
-        }
-        if (this.state.groupSelected === '' && this.state.component !== 'group')
-            component = 'Please select group first';
         if (this.state.logged)
             return (
                 <div>
@@ -523,13 +265,13 @@ class App extends Component {
                         </Toolbar>
                     </React.Fragment>
                     <ToolbarFixedAdjust className='content'>
-                        {this.drawer}
+                        <NavMenu loadData={this.loadData} changeMenuItem={this.changeMenuItem}/>
                         <main>
                             <Grid style={{padding: 0}}>
                                 <GridCell span="2"/>
                                 <GridCell span="12"
                                           style={{textAlign: 'center', marginLeft: '25%', marginRight: '5%'}}>
-                                    {component}
+                                    {this.renderSelectedMenuItem()}
                                 </GridCell>
                             </Grid>
                         </main>

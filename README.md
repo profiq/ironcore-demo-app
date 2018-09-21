@@ -16,7 +16,7 @@ yarn electron
 ```
 
 
-## Setting up IronCore SDK
+##Setting up IronCore SDK
 Head to [IronCoreLabs](https://admin.ironcorelabs.com/login)
 , login with GitHub account and create new project using 'Add Service Key'
 
@@ -31,5 +31,5 @@ Format of variables in config:
   "privateKey": "-----BEGIN EC PRIVATE KEY-----\n???\n???\n-----END EC PRIVATE KEY-----"
 }
 ```
-## First login
+##First login
 Account for any user is automatically created by logging in with new username and new password
