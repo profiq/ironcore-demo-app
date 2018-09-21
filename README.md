@@ -20,7 +20,7 @@ yarn electron
 Head to [IronCoreLabs](https://admin.ironcorelabs.com/login)
 , login with GitHub account and create new project using 'Add Service Key'
 
-Make sure you overwrite file 'ironcore-config.json' with your keys and IDs
+Make sure you overwrite file '/src/ironcore-config.json' with your keys and IDs
 
 Format of variables in config:
 ```
