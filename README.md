@@ -33,3 +33,6 @@ Format of variables in config:
 ```
 ## First login
 Account for any user is automatically created by logging in with new username and new password
+
+## Screenshots
+<img src="readmeImages/Login.png" width="400" /> <img src="readmeImages/GroupSelector.png" width="400" /> <img src="readmeImages/GroupManagement.png" width="400" /> <img src="readmeImages/Messages.png" width="400" />  <img src="readmeImages/SendMessage.png" width="400" />
