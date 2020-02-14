@@ -12,7 +12,7 @@
     "react-scripts": "1.1.4",
     "react-tooltip": "^3.6.1",
     "rmwc": "^1.8.3",
-    "yarn": "^1.9.4"
+    "yarn": "^1.22.0"
   },
   "main": "src/electron-starter.js",
   "scripts": {
